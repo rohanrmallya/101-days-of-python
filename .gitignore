@@ -175,3 +175,5 @@ output.md
 cache
 .DS_Store
 outputs/
+
+chroma/
