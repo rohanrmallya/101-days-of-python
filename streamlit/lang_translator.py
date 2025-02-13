@@ -1,9 +1,5 @@
 import streamlit as st
 from googletrans import Translator, LANGUAGES
-import pyttsx3
-import os
-import base64
-import speech_recognition as sr
 
 # Page Configuration
 st.set_page_config(
@@ -48,7 +44,10 @@ if feature == "Text Translation":
         [lang.capitalize() for lang in LANGUAGES.values()]
     )
     
-    if st.button("Translate"):
+    # Disable the Translate button if no text is entered
+    translate_button = st.button("Translate", disabled=not text_to_translate.strip())
+    
+    if translate_button:
         if text_to_translate.strip():
             try:
                 # Determine source language code
@@ -76,65 +75,8 @@ if feature == "Text Translation":
         else:
             st.warning("Please enter text to translate!")
 
-# Speech-to-Text
-elif feature == "Speech-to-Text":
-    st.header("Speech-to-Text")
-    st.markdown("Upload an audio file, and we will convert it to text.")
-    
-    uploaded_file = st.file_uploader("Upload audio file (WAV format):", type=["wav"])
-    
-    if uploaded_file is not None:
-        recognizer = sr.Recognizer()
-        with sr.AudioFile(uploaded_file) as source:
-            audio = recognizer.record(source)
-        
-        try:
-            text = recognizer.recognize_google(audio)
-            st.success("Converted Text:")
-            st.write(text)
-        except Exception as e:
-            st.error(f"Error in speech recognition: {e}")
-
-# Text-to-Speech
-elif feature == "Text-to-Speech":
-    st.header("Text-to-Speech")
-    
-    text_to_convert = st.text_area("Enter text to convert to speech:")
-    language = st.selectbox("Select language:", [lang.capitalize() for lang in LANGUAGES.values()])
-    
-    if st.button("Convert to Speech"):
-        if text_to_convert.strip():
-            try:
-                # Initialize the pyttsx3 engine
-                engine = pyttsx3.init()
-
-                # Set the properties for speed
-                rate = engine.getProperty('rate')  # Get the current speech rate
-                engine.setProperty('rate', rate )  # Multiply the rate by 5 for faster speech
-                
-                # Save the speech to a file
-                audio_file = "output.mp3"
-                engine.save_to_file(text_to_convert, audio_file)
-                engine.runAndWait()  # Run the speech engine
-
-                # Play Audio
-                with open(audio_file, "rb") as file:
-                    audio_bytes = file.read()
-                    b64 = base64.b64encode(audio_bytes).decode()
-                    href = f'<a href="data:audio/mp3;base64,{b64}" download="translated_audio.mp3">Download Audio</a>'
-                    st.markdown(href, unsafe_allow_html=True)
-                    st.audio(audio_bytes, format="audio/mp3")
-                
-                # Clean up
-                os.remove(audio_file)
-            except Exception as e:
-                st.error(f"Error in text-to-speech conversion: {e}")
-        else:
-            st.warning("Please enter text to convert!")
-
-
-# Translation History
-elif feature == "Translation History":
+# Translation History (optional feature)
+if feature == "Translation History":
     st.header("Translation History")
     
     if st.session_state.history:
@@ -148,23 +90,3 @@ elif feature == "Translation History":
             st.success("Translation history cleared!")
     else:
         st.info("No translations yet!")
-
-#Footer
-st.markdown(
-        """
-        <style>
-        .bottom-right {
-            position: fixed;
-            bottom: 10px;
-            right: 15px;
-            font-size: 0.9em;
-            color: gray;
-        }
-        </style>
-        <div class="bottom-right">
-            Made with ⚡ at 'The Hackers Playbook' ©. All rights reserved.
-        </div>
-        """,
-        unsafe_allow_html=True
-                )
-
