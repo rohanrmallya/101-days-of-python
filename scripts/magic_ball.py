@@ -14,7 +14,7 @@ from deepgram import (
     FileSource,
 )
 import json
-import tempfile
+import shutil
 from pydub import AudioSegment
 from pydub.playback import play
 from pydub.effects import normalize, strip_silence
@@ -23,7 +23,6 @@ from openai import OpenAI
 ## Constants
 DEFAULT_TEMPERATURE = 0.5
 DEFAULT_MAX_TOKENS = 2048
-
 
 load_dotenv(dotenv_path=".env", override=True)
 
@@ -109,16 +108,18 @@ def record_voice() -> str:
                 break
 
     audio_data = np.concatenate(audio_buffer)
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3", dir="/tmp")
+    tmp_dir = os.path.join(os.getcwd(), "tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+    audio_file_path = os.path.join(tmp_dir, "recording.mp3")
     audio_segment = AudioSegment(
         audio_data.tobytes(),
         frame_rate=44100,
         sample_width=audio_data.dtype.itemsize,
         channels=1,
     )
-    audio_segment.export(temp_file.name, format="mp3")
+    audio_segment.export(audio_file_path, format="mp3")
 
-    return temp_file.name
+    return audio_file_path
 
 
 def play_audio(file_path: str):
@@ -256,3 +257,6 @@ if __name__ == "__main__":
     verdict = get_magic_ball_verdict(transcript_text)
     print("\n\n____________ Magic ball verdict: ___________\n\n", verdict)
     print("\n\n")
+
+    # Clean up the temporary directory
+    shutil.rmtree(os.path.join(os.getcwd(), "tmp"))
