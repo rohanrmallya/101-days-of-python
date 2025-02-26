@@ -16,9 +16,19 @@ In ordinary human language, I want to give back to the community by making a sim
 
 ---
 
+## Virutal Environment Setup
+
+Please follow the instructions in the [Virtual Environment Guide](docs/virtual_environment_guide.md) to set up your virtual environment.
+
+**NOTE:** This is to ensure that all dependencies are installed and the environment is set up correctly when running the notebooks.
+
 ## Contributors
 
 - Aditya Patange (Knowledge Engineer, The Hackers Playbook)
+
+- Sarvesh Bhujle (Software Engineer, The Hackers Playbook)
+
+- Shantanu Borkar (Founder's Office Associate, The Hackers Playbook)
 
 ---
 
@@ -29,3 +39,4 @@ This project is licensed under the AGPL v3. See the [LICENSE](LICENSE) file for 
 ---
 
 > _"Python runs faster than my brain. (with a small 'b')" — The (un)Initiated_ 🧠
+
