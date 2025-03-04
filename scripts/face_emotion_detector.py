@@ -4,6 +4,8 @@ import sys
 import os
 from rich.console import Console
 from rich.text import Text
+import base64
+import mimetypes
 
 console = Console()
 
@@ -19,12 +21,33 @@ def print_banner():
     )
     console.print(banner)
 
+def image_to_base64(image_path):
+    with open(image_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+    return encoded_string
 
-def detect_emotion(image_path):
-    # Dummy function for emotion detection
-    console.print(f"Detecting emotion for the image: {image_path}", style="bold cyan")
-    return "Happy"
+def detect_emotion(base64_image):
+    return {
+        "model": "claude-3-7-sonnet-latest",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "What is the emotion of the person in this image?"},
+                    {"type": "image", "source": base64_image}
+                ]
+            }
+        ]
+    }
 
+def detect_media_type(file_path):
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type and mime_type.startswith("image/"):
+        return mime_type
+    return "unknown"
+
+def print_emotion(emotion):
+    console.print(f"Detected Emotion: {emotion}", style="bold green")
 
 def main():
     print_banner()
@@ -37,7 +60,7 @@ def main():
 
     if args.face_path:
         emotion = detect_emotion(args.face_path)
-        console.print(f"Detected Emotion: {emotion}", style="bold green")
+        console.print(print_emotion(emotion))
     elif args.live:
         cap = cv2.VideoCapture(0)
         console.print("Press 'Enter' to capture an image.", style="bold yellow")
@@ -64,7 +87,12 @@ def main():
             "Please provide either --face-path or --live option.", style="bold red"
         )
         sys.exit(1)
+    
 
 
 if __name__ == "__main__":
     main()
+
+
+
+        
