@@ -33,11 +33,6 @@ if generate:
 
             # Display Book Info
             st.subheader("Book Information")
-            style_metric_cards(border_left_color="#2E8B57", box_shadow=True)
-            col1, col2, col3 = st.columns([1, 1, 1])
-            col1.metric("Title", metadata['Title'])
-            col2.metric("Author", metadata['Author'])
-            col3.metric("Pages", metadata['Pages'])
 
             st.markdown(
                 """
