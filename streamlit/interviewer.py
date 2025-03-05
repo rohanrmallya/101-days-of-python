@@ -2,76 +2,56 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 import openai
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from reportlab.pdfgen import canvas
 
-# Load Environment Variables
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
-email_sender = os.getenv("EMAIL_SENDER")
-email_password = os.getenv("EMAIL_APP_PASSWORD")
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
-# 📌 Question Generation Function
-def generate_questions(role, num):
-    prompt = f"Generate {num} interview questions for {role} including technical and HR questions."
+def generate_questions(role, num, skills, experience, projects):
+    prompt = f"Generate {num} personalized interview questions for a candidate applying for the role of {role}. The questions should be a mix of technical, behavioral, and HR questions. Focus on evaluating the candidate's skills: {skills}, work experience: {experience}, and projects: {projects}. Include scenario-based questions, problem-solving questions, and questions that assess the candidate's contribution to past projects."
     response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=DEFAULT_OPENAI_MODEL,
         messages=[
+            {"role": "system", "content": "Generate interview questions for a job role."},
             {"role": "user", "content": prompt}
         ]
     )
     return response.choices[0].message.content.split("\n")
 
-# 📧 Email Sending Function
-def send_email(receiver, subject, body):
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = email_sender
-        msg['To'] = receiver
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(email_sender, email_password)
-        server.sendmail(email_sender, receiver, msg.as_string())
-        server.quit()
-        return "✅ Email Sent Successfully!"
-    except Exception as e:
-        return f"❌ Email Not Sent: {str(e)}"
-
-# PDF Generation
 def generate_pdf(content, filename):
     pdf = canvas.Canvas(filename)
-    pdf.drawString(100, 800, "Interview Questions")
+    pdf.setFont("Helvetica", 12)
+    pdf.drawString(100, 800, "📄 Interview Questions")
+
     y = 780
-    for line in content.split("\n"):
-        pdf.drawString(100, y, line)
+    for i, line in enumerate(content.split("\n"), start=1):
+        if y < 50:
+            pdf.showPage()
+            y = 800
+        pdf.drawString(100, y, f"{i}. {line}")
         y -= 20
+
     pdf.save()
 
-# Streamlit App
-st.title("💪 AI Interview Questionnaire Generator")
-st.sidebar.header("📌 Settings")
+st.set_page_config(layout="wide", page_title="AI Interview Questions Generator", page_icon="💼")
+st.title("💼 AI Interview Questions Generator")
+st.markdown("Welcome to the AI Interview Questions Generator! This app will help you generate personalized interview questions for a job role. Simply fill in the required fields and click the 'Generate Questions' button to get started.")
+st.sidebar.header("📌 Customize Your Questions")
 
-role = st.sidebar.text_input("Job Role")
-email = st.sidebar.text_input("Candidate Email")
-num_questions = st.sidebar.slider("Number of Questions", 1, 20, 10)
+role = st.sidebar.text_input("🔍 Job Role", placeholder="e.g. Data Scientist")
+skills = st.sidebar.text_area("🛠️ Key Skills", placeholder="e.g. Python, Machine Learning, Data Structures", height=100)
+experience = st.sidebar.text_area("💼 Work Experience", placeholder="e.g. 2 years in software development", height=100)
+projects = st.sidebar.text_area("🚀 Projects", placeholder="e.g. Built a recommendation system", height=100)
+num_questions = st.sidebar.slider("🔥 Number of Questions", 1, 20, 10)
 
 if st.sidebar.button("🚀 Generate Questions"):
-    questions = generate_questions(role, num_questions)
+    if not role or not skills or not experience or not projects:
+        st.warning("⚠️ Please fill in all fields before generating questions.")
+    questions = generate_questions(role, num_questions, skills, experience, projects)
     st.success("✅ Questions Generated!")
     st.write("\n".join(questions))
 
-    # PDF Download Button
     generate_pdf("\n".join(questions), "Interview_Questions.pdf")
     with open("Interview_Questions.pdf", "rb") as file:
-        st.download_button("📄 Download PDF", file, "Interview_Questions.pdf", "application/pdf")
-
-    # Send Email Button
-    email_body = f"Dear Candidate,\n\nPlease find attached interview questions for the {role} role.\n\nBest Regards,\nTeam"
-    if st.sidebar.button("📧 Send Email"):
-        result = send_email(email, f"{role} Interview Invitation", email_body)
-        st.success(result)
+        st.download_button("📄 Download Questions as PDF", file, "Interview_Questions.pdf", "application/pdf")
