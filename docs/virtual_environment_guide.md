@@ -111,6 +111,11 @@ Using virtual environments ensures each project has the right dependencies witho
 
 4. A folder named `venv` will be created inside your project.  
 
+#### **NOTE:** Make sure the enviornment in the terminal is the same as your VS Code terminal.
+
+#### This can be verified by checking if the venv folder in the terminal is the same as selected in VS code.
+
+
 ## Virtual Environment Directory Structure
 
 Once you create a virtual environment, your project folder will look like this:
