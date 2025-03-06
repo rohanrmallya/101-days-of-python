@@ -22,6 +22,7 @@ DEFAULT_NUM_QUESTIONS = 10
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
 
+
 def init():
     """Initializes the OpenAI API key
 
@@ -104,6 +105,60 @@ def generate_questions(
         print(f"Failed to generate questions: {e}")
         traceback.print_exc()
         return []
+
+def analyze_resume(candidate_resume: str, job_role: str) -> str:
+    f"""
+    Analyzes a resume and provides feedback, ratings, and an improved version based on the candidate's suitability for the target job role.
+    Args:
+        candidate_resume (str): The resume of the candidate to be analyzed.
+        job_role (str): The target job role for which the resume is being evaluated.
+
+    Returns:
+        str: A markdown-formatted analysis including ratings, feedback, strengths & weaknesses,
+             overall candidate fit score, and a rewritten version of the resume with improvements.
+    """
+    system_prompt = f"""
+    The task is to analyze the resume of a candidate applying for the role of '{job_role}'.
+    The resume of the candidate is {candidate_resume}.
+        You are a professional resume analyzer. Your job is to review the following resume and evaluate how well the candidate fits the target job role.
+        Rate the resume on a scale of 1-10 across different categories and provide actionable feedback for each category.
+        Format your response in **markdown** with the following sections:
+
+        # Resume Analyzer
+
+        ## Candidate Fit Score
+        Provide an overall **Candidate Fit Score** out of 10 based on how well the candidate matches the target job role.
+
+        ## Ratings & Feedback
+        Provide detailed ratings and suggestions for improvement on the following categories:
+
+        📝 Structure & Formatting - Is the layout clean, consistent, and visually appealing? `(Score out of 10)`
+        📄 Content Quality - Are the job roles, achievements, and skills clearly described? `(Score out of 10)`
+        🔑 Keywords & ATS Optimization - Does the resume contain relevant keywords for the target job? `(Score out of 10)`
+        🌟 Impact & Accomplishments - Are quantifiable achievements highlighted? `(Score out of 10)`
+        💪 Personal Branding - Does the resume convey a unique personal brand? `(Score out of 10)`
+        🎯 Relevance to Job Role - How closely does the candidate's experience and skills match the target job role? `(Score out of 10)`
+        🔍 Grammar & Language - Is the writing clear, error-free, and professional? `(Score out of 10)`
+
+        ## Strengths & Weaknesses
+        Provide a summary of what the resume does well and where it needs improvement.
+
+        ## Final Assessment
+        Give an **overall Candidate Fit Score** out of 10 based on the detailed analysis and suitability for the target job role.
+
+        ## Improved Version
+        Rewrite the resume with suggested improvements while maintaining the original intent and making it more impactful.
+    """
+
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Resume:\n{candidate_resume}\n\nTarget Job Role: {job_role}"}
+        ]
+    )
+
+    return response.choices[0].message.content
 
 
 def add_header_footer(canvas: Canvas, doc: SimpleDocTemplate) -> None:
@@ -337,65 +392,93 @@ def setup_streamlit_app() -> None:
     )
     st.sidebar.header("📌 Customize Your Questions")
 
-    role = st.sidebar.text_input("🔍 Job Role", placeholder="e.g. Data Scientist")
-    skills = ""
-    experience = ""
-    projects = ""
-    num_questions = st.sidebar.slider("🔥 Number of Questions", 1, 20, 10)
+    interview_question = st.sidebar.checkbox("Interview Question", key="interivew_question")
+    resume_analyzer =  st.sidebar.checkbox("Resume Analyzer", key="resume_analyzer")
+    if interview_question:
+        role = st.sidebar.text_input("🔍 Job Role", placeholder="e.g. Data Scientist")
+        skills = ""
+        experience = ""
+        projects = ""
+        num_questions = st.sidebar.slider("🔥 Number of Questions", 1, 20, 10)
 
-    uploaded_file = st.sidebar.file_uploader(
-        "📂 Upload & Parse Resume (Optional)", type=["pdf"], accept_multiple_files=False
-    )
-
-    resume_text = ""
-
-    if uploaded_file is not None:
-        resume_text = extract_resume_content_from_file(uploaded_file)
-        st.success("✅ Resume Uploaded & Parsed Successfully!")
-    else:
-        skills = st.sidebar.text_area(
-            "🛠️ Key Skills",
-            placeholder="e.g. Python, Machine Learning, Data Structures",
-            height=100,
-        )
-        experience = st.sidebar.text_area(
-            "💼 Work Experience",
-            placeholder="e.g. 2 years in software development",
-            height=100,
-        )
-        projects = st.sidebar.text_area(
-            "🚀 Projects", placeholder="e.g. Built a recommendation system", height=100
+        uploaded_file = st.sidebar.file_uploader(
+            "📂 Upload & Parse Resume (Optional)", type=["pdf"], accept_multiple_files=False
         )
 
-    if st.sidebar.button("🚀 Generate Questions"):
-        if (
-            not role
-            or (not skills and not resume_text)
-            or (not experience and not resume_text)
-            or (not projects and not resume_text)
-        ):
-            st.warning("⚠️ Please fill in all fields before generating questions.")
-        questions = generate_questions(
-            role=role,
-            skills=skills,
-            experience=experience,
-            projects=projects,
-            num_questions=num_questions,
-            resume_content=resume_text,
-        )
-        st.success("✅ Questions Generated!")
-        st.write("\n".join(questions))
+        resume_text = ""
 
-        generate_pdf("\n".join(questions), "Interview_Questions.pdf")
-        with open("Interview_Questions.pdf", "rb") as file:
-            st.download_button(
-                "📄 Download Questions as PDF",
-                file,
-                "Interview_Questions.pdf",
-                "application/pdf",
+        if uploaded_file is not None:
+            resume_text = extract_resume_content_from_file(uploaded_file)
+            st.success("✅ Resume Uploaded & Parsed Successfully!")
+        else:
+            skills = st.sidebar.text_area(
+                "🛠️ Key Skills",
+                placeholder="e.g. Python, Machine Learning, Data Structures",
+                height=100,
+            )
+            experience = st.sidebar.text_area(
+                "💼 Work Experience",
+                placeholder="e.g. 2 years in software development",
+                height=100,
+            )
+            projects = st.sidebar.text_area(
+                "🚀 Projects", placeholder="e.g. Built a recommendation system", height=100
             )
 
+        if st.sidebar.button("🚀 Generate Questions"):
+            if (
+                not role
+                or (not skills and not resume_text)
+                or (not experience and not resume_text)
+                or (not projects and not resume_text)
+            ):
+                st.warning("⚠️ Please fill in all fields before generating questions.")
+            questions = generate_questions(
+                role=role,
+                skills=skills,
+                experience=experience,
+                projects=projects,
+                num_questions=num_questions,
+                resume_content=resume_text,
+            )
+            st.success("✅ Questions Generated!")
+            st.write("\n".join(questions))
 
+            generate_pdf("\n".join(questions), "Interview_Questions.pdf")
+            with open("Interview_Questions.pdf", "rb") as file:
+                st.download_button(
+                    "📄 Download Questions as PDF",
+                    file,
+                    "Interview_Questions.pdf",
+                    "application/pdf",
+                )
+    if resume_analyzer:
+        role = st.sidebar.text_input("🔍 Job Role", placeholder="e.g. Data Scientist")
+        uploaded_file = st.sidebar.file_uploader(
+            "📂 Upload & Parse Resume (Optional)", type=["pdf"], accept_multiple_files=False
+        )
+        resume_text = ""
+
+        if uploaded_file is not None:
+            resume_text = extract_resume_content_from_file(uploaded_file)
+            st.success("✅ Resume Uploaded & Parsed Successfully!")
+
+        if st.sidebar.button("🔍 Analyze Resume"):
+            if not role or not resume_text:
+                st.warning("⚠️ Please fill in all fields before analyzing resume.")
+            analysis = analyze_resume(resume_text, role)
+            st.success("✅ Resume Analyzed!")
+            st.write(analysis)
+
+            generate_pdf(analysis, "Resume_Analysis.pdf")
+            with open("Resume_Analysis.pdf", "rb") as file:
+                st.download_button(
+                    "📄 Download Questions as PDF",
+                    file,
+                    "Resume_Analysis.pdf",
+                    "application/pdf",
+                )
+        
 if __name__ == "__main__":
     init()
     setup_streamlit_app()

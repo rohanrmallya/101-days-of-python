@@ -13,6 +13,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 class Participant(BaseModel):
     name: str
     description: str
+    opener: str
     opinions: list[str]
 
 
@@ -72,11 +73,12 @@ class State:
 @st.dialog("🙋🏽‍♂️ Add Participant")
 def add_participant_dialog(state: State):
     participant_name = st.text_input("Participant Name")
-    participant_description = st.text_area("Participant Description")
+    participant_description = st.text_input("Participant Description")
+    participant_opener = st.text_area("Participant Opening Statement")
     add_participant_button = st.button("Add Participant")
     if add_participant_button:
         participant = Participant(
-            name=participant_name, description=participant_description, opinions=[]
+            name=participant_name, description=participant_description, opener=participant_opener, opinions=[]
         )
         state.add_participant(participant)
         st.rerun()
@@ -106,11 +108,14 @@ def edit_opinion_dialog(state: State, participant_name: str, opinion: str):
 
 
 @st.dialog("🦉 Edit Participant")
-def edit_participant_dialog(state: State, participant_name: str):
+def edit_participant_dialog(state: State, participant_name: str, participant_description: str, participant_opener: str):
     participant = state.get_participant_by_name(participant_name)
     participant_name = st.text_input("Participant Name", value=participant.name)
     participant_description = st.text_area(
         "Participant Description", value=participant.description
+    )
+    participant_opener = st.text_area(
+        "Participant Opening Statement", value=participant.opener
     )
     submit_participant_button = st.button(
         "Submit", key=f"submit_participant_{participant_name}"
@@ -118,6 +123,7 @@ def edit_participant_dialog(state: State, participant_name: str):
     if submit_participant_button:
         participant.name = participant_name
         participant.description = participant_description
+        participant.opener = participant_opener
         state.update_participant(participant)
         st.rerun()
 
@@ -127,18 +133,66 @@ def generate_debate_resolution(participants: list[Participant], debate_context: 
         participants_details = ""
         for participant in participants:
             participants_details += (
-                f"Name: {participant.name} || Description: {participant.description}\n"
+                f"Name: {participant.name} || Description: {participant.description}\n || Opening Statement: {participant.opener}\n"
             )
             for opinion in participant.opinions:
                 participants_details += f"Opinion: {opinion}\n"
 
         system_prompt = f""""
-            You are Skippie, an advanced AI designed to resolve debates. You are given a debate context and participants details. You need to resolve the debate by providing a resolution that makes sense and is fair to all participants.
-            Refer to various conflict resolution techniques and provide a resolution that is fair and just.
-            Mention the tradeoffs and benefits of the resolution.
-            Provide a balanced, structured, and thoughtful response highlighting the objective pros and cons of each participant's argument.
-            Provide a final resolution that is fair and just to all participants and serves the broad goals.
-        """
+            You are an advanced AI Debate Resolver built to act as an impartial mediator between two opposing arguments on any given topic. Your core purpose is to deliver a fair, unbiased, and evidence-based resolution by deeply analyzing both sides without any favoritism or emotional influence.
+            Generate a resolution (output) for the debate in a proper markdown format. Also provide a detailed analysis of each side, fact verification report, strength & weakness breakdown, persuasion & bias score table, and a final conclusion.
+                Your evaluation process should follow these stages:
+                1. Argument Breakdown:
+                Identify and list the core claims made by each side.
+                Highlight supporting evidence or references provided (if any).
+                Separate emotional appeals from factual claims.
+                2. Fact Verification & Authenticity:
+                Cross-verify factual claims using reliable sources (if external information is available).
+                Label each claim as:
+                ✅ Factually Accurate
+                ❌ False/Misleading
+                ⚠ Unverified/Opinion-Based
+                Automatically identify and flag any logical fallacies (e.g., Ad hominem, Strawman, False Dichotomy).
+                3. Argument Strength Scoring:
+                Assign a dynamic score (0-100) to each side based on:
+
+                Criteria	Weight	Description
+                Factual Accuracy	40%	Verifiable facts & data used to support the argument
+                Logical Structure	30%	Clarity, coherence, and flow of reasoning
+                Persuasiveness	20%	How compelling the argument is (without manipulation)
+                Emotional Bias	10%	Lower score if the argument relies heavily on emotions instead of facts
+                4. Bias Detection:
+                Automatically flag if either side is using:
+
+                Emotional manipulation
+                Fear-based rhetoric
+                Misinformation
+                Unfair generalizations
+                5. Counter Argument Suggestions:
+                If either side presents weak or incomplete arguments, suggest neutral counterarguments that could strengthen both sides fairly.
+
+                6. Final Verdict (Optional or On Request):
+                Provide one of the following outcomes:
+
+                Clear Winner (If one argument is factually stronger)
+                Balanced Conclusion (If both sides have equally strong points)
+                No Resolution Possible (If both sides are purely opinion-based without supporting facts)
+                Core Principles to Follow:
+                Zero Personal Bias
+                Fact over Emotion
+                Clarity over Complexity
+                Fairness over Popularity
+                Transparency in Reasoning
+                Output Structure (Always Follow This Format):
+
+                Summary of Both Arguments
+                Detailed Analysis of Each Side
+                Fact Verification Report
+                Strength & Weakness Breakdown
+                Persuasion & Bias Score Table
+                Final Conclusion
+                Enable Real-Time Fact-Checking via external web search APIs to verify claims instantly before giving the final verdict.
+            """
 
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -195,7 +249,7 @@ def main():
 
     st.markdown("## Participants")
     for participant in participants:
-        st.write(f"**{participant.name}**: {participant.description}")
+        st.write(f"**{participant.name}**: {participant.description} \n\n **Opening Statement:** {participant.opener}")
         if len(participant.opinions) > 0:
             st.markdown("### Opinions")
             opinion_count = 0
@@ -226,7 +280,7 @@ def main():
             )
             if edit_participant:
                 edit_participant_dialog(
-                    state=app_state, participant_name=participant.name
+                    state=app_state, participant_name=participant.name, participant_description=participant.description, participant_opener=participant.opener
                 )
         with cols[1]:
             add_opinion_button = st.button(
