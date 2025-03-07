@@ -155,14 +155,19 @@ def main():
     if tweets and len(tweets) > 0:
         st.success("✅ Tweets Generated Successfully!")
         for idx, tweet in enumerate(tweets):
-            st.markdown(f"🐦 {tweet.content}")
-            post_tweet_button = st.button("🚀 Post Tweet", key=f"post_tweet_{idx}")
-            refine_button = st.button("🔧 Refine Tweet", key=f"refine_{idx}")
-            refine_input_prompt = st.text_area(
+            column1, column2 = st.columns([1, 0.2])
+            column1.markdown(f"🐦 {tweet.content}")
+            post_tweet_button = column2.button("🚀 Post Tweet", key=f"post_tweet_{idx}")
+            column1, column2 = st.columns([1, 2])
+            refine_input_prompt = column1.text_input(
                 "🔧 Refine Tweet",
                 placeholder="Instructions to refine the tweet.",
                 key=f"refine_input_{idx}",
             )
+            refine_button = column1.button("🔧 Refine Tweet", key=f"refine_{idx}")
+            column2.markdown("")
+            st.markdown("---")
+                
             if refine_button:
                 refined_tweet = refine_tweet(tweet, refine_input_prompt, context)
                 if refined_tweet:
